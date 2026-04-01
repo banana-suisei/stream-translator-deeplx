@@ -871,9 +871,7 @@ with gr.Blocks(title="Stream Translator GPT WebUI") as demo:
                     sse_host = gr.Textbox(label=i18n.get("sse_host"),
                                           value=get_default("sse_host"),
                                           placeholder=i18n.get("sse_host_ph"))
-                    sse_port = gr.Number(label=i18n.get("sse_port"),
-                                         value=get_default("sse_port"),
-                                         precision=0)
+                    sse_port = gr.Number(label=i18n.get("sse_port"), value=get_default("sse_port"), precision=0)
 
         with gr.Tab(i18n.get("overall")):
 

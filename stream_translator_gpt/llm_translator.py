@@ -168,13 +168,7 @@ class LLMClient():
             if self.service_tier is not None:
                 kwargs["service_tier"] = self.service_tier
 
-            completion = client.chat.completions.create(**kwargs,
-                                                            extra_body={
-                                                                "reasoning": {
-                                                                    "effort": "minimal"
-                                                                }
-                                                            }
-                                                        )
+            completion = client.chat.completions.create(**kwargs, extra_body={"reasoning": {"effort": "minimal"}})
 
             translation_task.translation = completion.choices[0].message.content
             if self.debug_mode and hasattr(completion, 'usage') and completion.usage:
