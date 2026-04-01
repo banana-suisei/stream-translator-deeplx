@@ -1,17 +1,19 @@
 import os
 import queue
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
 
-from .common import TranslationTask, LoopWorkerBase, sec2str, start_daemon_thread, BOLD, ENDC
+from .common import TranslationTask, LoopWorkerBase, sec2str, start_daemon_thread, BOLD, ENDC, INFO
+from .sse_server import LocalSSEServer
 
 
 class ResultExporter(LoopWorkerBase):
 
     def __init__(self, cqhttp_url: str, cqhttp_token: str, discord_webhook_url: str, telegram_token: str,
                  telegram_chat_id: int, output_file_path: str, proxy: str, output_whisper_result: bool,
-                 output_timestamps: bool) -> None:
+                 output_timestamps: bool, sse_host: str, sse_port: int | None) -> None:
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
         self.cqhttp_queue = None
         self.discord_queue = None
@@ -19,6 +21,8 @@ class ResultExporter(LoopWorkerBase):
         self.file_queue = None
         self.output_whisper_result = output_whisper_result
         self.output_timestamps = output_timestamps
+        self.event_counter = 0
+        self.sse_server = None
 
         if cqhttp_url:
             self.cqhttp_queue = queue.SimpleQueue()
@@ -32,6 +36,9 @@ class ResultExporter(LoopWorkerBase):
         if output_file_path:
             self.file_queue = queue.SimpleQueue()
             start_daemon_thread(self._write_message_to_file, file_path=output_file_path)
+        if sse_port:
+            self.sse_server = LocalSSEServer(host=sse_host, port=sse_port)
+            print(f'{INFO}SSE output server listening at http://{sse_host}:{sse_port}{self.sse_server.path}')
 
     def _send_message_to_cqhttp(self, url: str, token: str):
         headers = {'Authorization': f'Bearer {token}'} if token else None
@@ -80,6 +87,22 @@ class ResultExporter(LoopWorkerBase):
             with open(file_path, 'a', encoding='utf-8') as f:
                 f.write(text + '\n\n')
 
+    def _build_sse_payload(self, task: TranslationTask):
+        self.event_counter += 1
+        return {
+            'seq': self.event_counter,
+            'created_at': datetime.now(timezone.utc).isoformat(),
+            'time_range': {
+                'start': task.time_range[0],
+                'end': task.time_range[1],
+                'start_srt': sec2str(task.time_range[0]),
+                'end_srt': sec2str(task.time_range[1]),
+            },
+            'transcript': task.transcript,
+            'translation': task.translation,
+            'translation_failed': task.translation_failed,
+        }
+
     def loop(self, input_queue: queue.SimpleQueue[TranslationTask]):
         while True:
             task = input_queue.get()
@@ -92,6 +115,8 @@ class ResultExporter(LoopWorkerBase):
                     self.telegram_queue.put(None)
                 if self.file_queue:
                     self.file_queue.put(None)
+                if self.sse_server:
+                    self.sse_server.close()
                 break
             timestamp_text = f'{sec2str(task.time_range[0])} --> {sec2str(task.time_range[1])}'
             text_to_send = (task.transcript + '\n') if self.output_whisper_result else ''
@@ -113,3 +138,6 @@ class ResultExporter(LoopWorkerBase):
                 self.telegram_queue.put(text_to_send)
             if self.file_queue:
                 self.file_queue.put(text_to_send)
+            if self.sse_server:
+                payload = self._build_sse_payload(task)
+                self.sse_server.broadcast(event='result', data=payload, event_id=payload['seq'])

@@ -48,6 +48,8 @@
     "discord_hook": "",
     "telegram_token": "",
     "telegram_chat_id": "",
+    "sse_host": "127.0.0.1",
+    "sse_port": null,
     "processing_proxy_trans": "",
     "openai_key_trans": "",
     "openai_base_url_trans": "",

@@ -87,7 +87,7 @@ INPUT_KEYS = [
     "transcription_initial_prompt", "translation_prompt", "translation_provider", "gpt_model", "gemini_model",
     "history_size", "translation_timeout", "processing_proxy", "use_json_result", "retry_if_translation_fails",
     "show_timestamps", "hide_transcription", "output_file", "output_proxy", "cqhttp_url", "cqhttp_token",
-    "discord_hook", "telegram_token", "telegram_chat_id", "extra_cli_args"
+    "discord_hook", "telegram_token", "telegram_chat_id", "sse_host", "sse_port", "extra_cli_args"
 ]
 
 
@@ -267,6 +267,8 @@ def build_translator_command(
         discord_hook,
         telegram_token,
         telegram_chat_id,
+        sse_host,
+        sse_port,
         extra_cli_args=None):
     cmd = [sys.executable, "-u", "-m", "stream_translator_gpt"]
 
@@ -416,6 +418,10 @@ def build_translator_command(
         cmd.extend(["--cqhttp_url", cqhttp_url])
         if cqhttp_token:
             cmd.extend(["--cqhttp_token", cqhttp_token])
+    if sse_port:
+        cmd.extend(["--sse_port", str(int(sse_port))])
+        if sse_host:
+            add_arg("--sse_host", sse_host, "sse_host")
 
     # --- Overall ---
     if overall_proxy:
@@ -502,6 +508,8 @@ def run_translator(
         discord_hook,
         telegram_token,
         telegram_chat_id,
+        sse_host,
+        sse_port,
         extra_cli_args):
     global process, is_running
 
@@ -575,6 +583,8 @@ def run_translator(
                                           discord_hook=discord_hook,
                                           telegram_token=telegram_token,
                                           telegram_chat_id=telegram_chat_id,
+                                          sse_host=sse_host,
+                                          sse_port=sse_port,
                                           extra_cli_args=extra_cli_args)
 
     if error:
@@ -856,6 +866,15 @@ with gr.Blocks(title="Stream Translator GPT WebUI") as demo:
             with gr.Group():
                 output_proxy = gr.Textbox(label=i18n.get("output_proxy"), placeholder=i18n.get("output_proxy_ph"))
 
+            with gr.Group():
+                with gr.Row():
+                    sse_host = gr.Textbox(label=i18n.get("sse_host"),
+                                          value=get_default("sse_host"),
+                                          placeholder=i18n.get("sse_host_ph"))
+                    sse_port = gr.Number(label=i18n.get("sse_port"),
+                                         value=get_default("sse_port"),
+                                         precision=0)
+
         with gr.Tab(i18n.get("overall")):
 
             extra_cli_args = gr.Textbox(label=i18n.get("extra_cli_args"),
@@ -985,7 +1004,7 @@ with gr.Blocks(title="Stream Translator GPT WebUI") as demo:
                         translation_provider, gpt_model, gemini_model, history_size, translation_timeout,
                         openai_base_url, google_base_url, processing_proxy, use_json_result, retry_if_translation_fails,
                         show_timestamps, hide_transcription, output_file, output_proxy, cqhttp_url, cqhttp_token,
-                        discord_hook, telegram_token, telegram_chat_id, extra_cli_args
+                        discord_hook, telegram_token, telegram_chat_id, sse_host, sse_port, extra_cli_args
                     ],
                     outputs=output_box,
                     concurrency_limit=1,

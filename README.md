@@ -172,6 +172,12 @@ The commands on Colab [![Open In Colab](https://colab.research.google.com/assets
 
     ```stream-translator-gpt {URL} --model large --language ja --translation_prompt "Translate from Japanese to Chinese" --google_api_key {your_google_key} --hide_transcribe_result --retry_if_translation_fails --output_timestamps --output_file_path ./result.srt```
 
+- Streaming results through local SSE:
+
+    ```stream-translator-gpt {URL} --model large --language ja --translation_prompt "Translate from Japanese to Chinese" --google_api_key {your_google_key} --sse_port 8765```
+
+    Frontend integration doc: `docs/frontend-sse-integration.zh-CN.md`
+
 ### All options
 
 | Option                                  | Default Value                  | Description                                                                                                                                                                                                        |
@@ -236,6 +242,8 @@ The commands on Colab [![Open In Colab](https://colab.research.google.com/assets
 | `--telegram_token`                      |                                | Token of Telegram bot.                                                                                                                                                                                             |
 | `--telegram_chat_id`                    |                                | If set, will send the result text to this Telegram chat. Needs to be used with \"--telegram_token\".                                                                                                               |
 | `--output_proxy`                        |                                | Use the specified HTTP/HTTPS/SOCKS proxy for Cqhttp/Discord/Telegram, e.g. http://127.0.0.1:7890.                                                                                                                  |
+| `--sse_host`                            | 127.0.0.1                      | Host used by the local SSE output server. Needs to be used with `--sse_port`.                                                                                                                                      |
+| `--sse_port`                            |                                | If set, starts a local SSE output server and streams transcription/translation results through `/events`.                                                                                                          |
 
 ## Contact me
 

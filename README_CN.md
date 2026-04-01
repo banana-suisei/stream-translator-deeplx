@@ -172,6 +172,12 @@ Colab上的命令 [![Open In Colab](https://colab.research.google.com/assets/col
 
     ```stream-translator-gpt {网址} --model large --language ja --translation_prompt "翻译以下日语为中文，只输出译文，不要输出原文，在一行内输出" --google_api_key {您的 Google 密钥} --hide_transcribe_result --retry_if_translation_fails --output_timestamps --output_file_path ./result.srt```
 
+- 通过本地 SSE 输出译文:
+
+    ```stream-translator-gpt {网址} --model large --language ja --translation_prompt "翻译以下日语为中文，只输出译文，不要输出原文，在一行内输出" --google_api_key {您的 Google 密钥} --sse_port 8765```
+
+    前端对接文档：`docs/frontend-sse-integration.zh-CN.md`
+
 ### 所有选项
 
 | 选项                                    | 默认值                         | 描述                                                                                                                                                                      |
@@ -236,6 +242,8 @@ Colab上的命令 [![Open In Colab](https://colab.research.google.com/assets/col
 | `--telegram_token`                      |                                | Telegram 机器人的 Token。                                                                                                                                                 |
 | `--telegram_chat_id`                    |                                | 如果使用，将把结果文本发送到此 Telegram 聊天。需要与 \"--telegram_token\" 配合使用。                                                                                      |
 | `--output_proxy`                        |                                | 为 Cqhttp/Discord/Telegram 使用指定的 HTTP/HTTPS/SOCKS 代理，例如 http://127.0.0.1:7890。                                                                                 |
+| `--sse_host`                            | 127.0.0.1                      | 本地 SSE 输出服务监听的地址。需要与 `--sse_port` 一起使用。                                                                                                                |
+| `--sse_port`                            |                                | 如果使用，将在本地启动 SSE 输出服务，并通过 `/events` 持续输出识别/翻译结果。                                                                                             |
 
 ## 联系我
 

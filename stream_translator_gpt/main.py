@@ -31,7 +31,7 @@ def main(url, openai_api_key, google_api_key, openai_base_url, google_base_url, 
          translation_timeout, use_json_result, retry_if_translation_fails, temperature, top_p, top_k, prompt_cache_key,
          reasoning_effort, verbosity, service_tier, debug_mode, processing_proxy, output_timestamps,
          hide_transcribe_result, output_file_path, cqhttp_url, cqhttp_token, discord_webhook_url, telegram_token,
-         telegram_chat_id, output_proxy):
+         telegram_chat_id, output_proxy, sse_host, sse_port):
     if openai_base_url:
         os.environ['OPENAI_BASE_URL'] = openai_base_url
 
@@ -152,6 +152,8 @@ def main(url, openai_api_key, google_api_key, openai_base_url, google_base_url, 
             proxy=output_proxy,
             output_whisper_result=not hide_transcribe_result,
             output_timestamps=output_timestamps,
+            sse_host=sse_host,
+            sse_port=sse_port,
         )
 
         audio_getter = audio_getter_future.result()
@@ -456,6 +458,14 @@ def cli():
         type=str,
         default=None,
         help='Use the specified HTTP/HTTPS/SOCKS proxy for Cqhttp/Discord/Telegram, e.g. http://127.0.0.1:7890.')
+    parser.add_argument('--sse_host',
+                        type=str,
+                        default='127.0.0.1',
+                        help='Host used by the local SSE output server. Needs to be used with "--sse_port".')
+    parser.add_argument('--sse_port',
+                        type=int,
+                        default=None,
+                        help='If set, will start a local SSE output server and stream results at "/events".')
 
     args = parser.parse_args().__dict__
 
