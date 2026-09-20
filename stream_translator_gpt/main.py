@@ -14,7 +14,7 @@ if __name__ == '__main__':
     __package__ = "stream_translator_gpt"
 
 from .common import ApiKeyPool, start_daemon_thread, is_url, WARNING, ERROR, INFO
-from .audio_getter import StreamAudioGetter, LocalFileAudioGetter, DeviceAudioGetter
+from .audio_getter import StreamAudioGetter, LocalFileAudioGetter, DeviceAudioGetter, NetworkAudioGetter
 from .audio_slicer import AudioSlicer
 from .audio_transcriber import OpenaiWhisper, FasterWhisper, SimulStreaming, RemoteOpenaiTranscriber
 from .llm_translator import LLMClient, ParallelTranslator, SerialTranslator
@@ -31,7 +31,7 @@ def main(url, openai_api_key, google_api_key, openai_base_url, google_base_url, 
          translation_timeout, use_json_result, retry_if_translation_fails, temperature, top_p, top_k, prompt_cache_key,
          reasoning_effort, verbosity, service_tier, debug_mode, processing_proxy, output_timestamps,
          hide_transcribe_result, output_file_path, cqhttp_url, cqhttp_token, discord_webhook_url, telegram_token,
-         telegram_chat_id, output_proxy, sse_host, sse_port):
+         telegram_chat_id, output_proxy, sse_host, sse_port, ingest_host, ingest_port):
     if openai_base_url:
         os.environ['OPENAI_BASE_URL'] = openai_base_url
 
@@ -47,7 +47,12 @@ def main(url, openai_api_key, google_api_key, openai_base_url, google_base_url, 
     with ThreadPoolExecutor() as executor:
 
         def init_audio_getter():
-            if url.lower() == 'device':
+            if url.lower() == 'ingest':
+                return NetworkAudioGetter(
+                    host=ingest_host,
+                    port=ingest_port,
+                )
+            elif url.lower() == 'device':
                 return DeviceAudioGetter(
                     device_index=device_index,
                     use_mic=mic,
@@ -202,7 +207,7 @@ def cli():
         'URL',
         type=str,
         help=
-        'The URL of the stream. If a local file path is filled in, it will be used as input. If fill in "device", the input will be obtained from your PC device.'
+        'The URL of the stream. If a local file path is filled in, it will be used as input. If fill in "device", the input will be obtained from your PC device. If fill in "ingest", the input will be received from a remote client over WebSocket (needs "--ingest_port").'
     )
     parser.add_argument(
         '--openai_api_key',
@@ -466,12 +471,25 @@ def cli():
                         type=int,
                         default=None,
                         help='If set, will start a local SSE output server and stream results at "/events".')
+    parser.add_argument('--ingest_host',
+                        type=str,
+                        default='127.0.0.1',
+                        help='Host to bind the WebSocket audio ingest server to. Only used when URL is "ingest". '
+                        'Cleartext, unauthenticated -- do not bind to an untrusted network.')
+    parser.add_argument('--ingest_port',
+                        type=int,
+                        default=None,
+                        help='If URL is "ingest", the port to listen on for incoming WebSocket PCM audio at "/ingest".')
 
     args = parser.parse_args().__dict__
 
     url = args.pop('URL')
 
-    if url.lower() != 'device' and not shutil.which('ffmpeg'):
+    if url.lower() == 'ingest' and not args['ingest_port']:
+        print(f'{ERROR}"--ingest_port" is required when URL is "ingest"')
+        sys.exit(1)
+
+    if url.lower() not in ('device', 'ingest') and not shutil.which('ffmpeg'):
         if platform.system() == 'Windows':
             print(f'{ERROR}ffmpeg not found. Please install it with: winget install ffmpeg')
         else:

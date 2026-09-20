@@ -13,6 +13,7 @@ import ffmpeg
 import numpy as np
 from scipy.signal import resample
 
+from .audio_ingest_server import AudioIngestServer
 from .common import SAMPLE_RATE, SAMPLES_PER_FRAME, LoopWorkerBase, INFO, WARNING
 
 
@@ -242,3 +243,39 @@ class DeviceAudioGetter(LoopWorkerBase):
                 self.stream.close()
             self.pyaudio.terminate()
         output_queue.put(None)
+
+
+class NetworkAudioGetter(LoopWorkerBase):
+    """Accepts a remote client over a cleartext WebSocket and feeds its audio
+    into the pipeline. Selected by passing "ingest" as the URL positional arg.
+
+    See audio_ingest_server.AudioIngestServer for the wire protocol and
+    per-session handling; this class is a thin adapter onto the getter
+    contract (loop/_exit_handler).
+    """
+
+    def __init__(self, host: str, port: int) -> None:
+        self.host = host
+        self.port = port
+        self.server = None
+
+    def _exit_handler(self, signum, frame):
+        if self.server:
+            self.server.close()
+        sys.exit(0)
+
+    def loop(self, output_queue: queue.SimpleQueue[np.array]):
+        try:
+            self.server = AudioIngestServer(host=self.host, port=self.port, output_queue=output_queue)
+            self.server.start()
+            self.server.wait_closed()
+        finally:
+            # This sentinel must be emitted exactly once, only when the getter
+            # itself shuts down (Ctrl+C / process exit) -- NEVER when a remote
+            # client merely disconnects. AudioSlicer forwards None downstream
+            # and tears the whole pipeline down permanently, so putting it here
+            # on every dropped phone connection would kill transcription until
+            # the PC process is restarted. Per-session disconnects are handled
+            # entirely inside AudioIngestServer, which never touches this queue
+            # with None.
+            output_queue.put(None)

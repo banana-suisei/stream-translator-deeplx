@@ -48,7 +48,8 @@ dependencies = [
   "faster-whisper>=1.1.1,<2.0.0",
   "openai>=2.0,<3.0",
   "google-genai>=1.0,<2.0",
-  "httpx>=0.26.0,<1.0"
+  "httpx>=0.26.0,<1.0",
+  "websockets>=13.0,<17.0"
 ]
 
 [project.optional-dependencies]
